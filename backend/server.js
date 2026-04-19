@@ -17,6 +17,14 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Routes
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
+
 // Test route
 app.get('/', (req, res) => {
   res.json({ message: 'Task Management API is running!' });
