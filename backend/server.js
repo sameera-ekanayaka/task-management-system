@@ -25,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
+
 // Test route
 app.get('/', (req, res) => {
   res.json({ message: 'Task Management API is running!' });
