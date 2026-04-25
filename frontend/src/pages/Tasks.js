@@ -133,6 +133,7 @@ const Tasks = () => {
     dueDate: '', assignedUserIds: []
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchTasks();
     if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {

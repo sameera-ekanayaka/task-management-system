@@ -9,6 +9,7 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, token } = useAuth();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchNotifications();
 
