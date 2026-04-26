@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
+const { sendWelcomeEmail } = require('../services/emailService');
 const generateTempPassword = () => {
   return Math.random().toString(36).slice(-8) + 'A1!';
 };
@@ -29,11 +29,14 @@ const createUser = async (req, res) => {
     const user = await prisma.user.create({
       data: { name, email, password: hashedPassword, role, mustResetPassword: true }
     });
-    res.status(201).json({
-      message: 'User created successfully',
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
-      tempPassword
-    });
+    // Send welcome email
+await sendWelcomeEmail(name, email, tempPassword);
+
+res.status(201).json({
+  message: 'User created successfully',
+  user: { id: user.id, name: user.name, email: user.email, role: user.role },
+  tempPassword
+});
   } catch (error) {
     console.error('Create user error:', error);
     res.status(500).json({ error: 'Internal Server Error', message: 'Something went wrong' });

@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
+const { sendDeadlineEmail } = require('./emailService');
 const checkDeadlines = async (io, connectedUsers) => {
   try {
     const now = new Date();
@@ -63,23 +63,31 @@ const checkDeadlines = async (io, connectedUsers) => {
         });
 
         // Only send if not already notified today
-        if (!existingNotif) {
-          // Save to database
-          await prisma.notification.create({
-            data: { userId, message }
-          });
+if (!existingNotif) {
+  // Save to database
+  await prisma.notification.create({
+    data: { userId, message }
+  });
 
-          // Send real-time if user is online
-          const socketId = connectedUsers[userId];
-          if (socketId) {
-            io.to(socketId).emit('notification', {
-              message,
-              taskId: task.id
-            });
-          }
+  // Send real-time if user is online
+  const socketId = connectedUsers[userId];
+  if (socketId) {
+    io.to(socketId).emit('notification', {
+      message,
+      taskId: task.id
+    });
+  }
 
-          console.log(`Deadline notification sent to user ${userId}: ${message}`);
+  // Send email notification
+  await sendDeadlineEmail(
+    assignment.user.name,
+    assignment.user.email,
+    task.title,
+    task.dueDate
+  );
         }
+
+        console.log(`Deadline notification sent to user ${userId}: ${message}`);
       }
     }
 
