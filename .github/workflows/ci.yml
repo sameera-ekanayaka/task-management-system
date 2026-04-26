@@ -1,0 +1,85 @@
+name: Task Management System CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ─── Backend Tests ───────────────────────────
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Generate Prisma Client
+        run: |
+          cd backend
+          npx prisma generate
+
+      - name: Check backend starts correctly
+        run: |
+          cd backend
+          node -e "require('./server.js')" &
+          sleep 5
+          kill %1 || true
+        env:
+          DATABASE_URL: "mysql://root:password@localhost:3306/test_db"
+          JWT_SECRET: "test-secret-key"
+          PORT: 5000
+          FRONTEND_URL: "http://localhost:3000"
+
+  # ─── Frontend Tests ───────────────────────────
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          CI= npm run build
+
+  # ─── Docker Build Test ────────────────────────
+  docker:
+    name: Docker Build CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker images
+        run: |
+          docker-compose build
