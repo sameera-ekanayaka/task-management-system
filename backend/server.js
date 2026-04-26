@@ -3,7 +3,8 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
-
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -20,6 +21,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning']
 }));
 app.use(express.json());
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
