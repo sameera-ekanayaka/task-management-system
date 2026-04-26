@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Users from './pages/Users';
+import ResetPassword from './pages/ResetPassword';
 
 // Protected route - redirects to login if not authenticated
 const ProtectedRoute = ({ children }) => {
@@ -28,6 +29,9 @@ function App() {
           <ProtectedRoute><Users /></ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/reset-password" element={
+  <ProtectedRoute><ResetPassword /></ProtectedRoute>
+} />
       </Routes>
     </BrowserRouter>
   );
