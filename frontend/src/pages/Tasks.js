@@ -5,116 +5,152 @@ import { getTasks, createTask, updateTaskStatus, deleteTask, addComment, getUser
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
-// ─── Kanban Column ───────────────────────────────────────────
-const KanbanColumn = ({ title, status, tasks, color, onStatusChange, onDelete, onComment, userRole }) => (
-  <div style={styles.column}>
-    <div style={{ ...styles.columnHeader, borderTop: `4px solid ${color}` }}>
-      <h3 style={styles.columnTitle}>{title}</h3>
-      <span style={{ ...styles.badge, backgroundColor: color }}>{tasks.length}</span>
-    </div>
+// ─── Task Card ────────────────────────────────────────────────
+const TaskCard = ({ task, onStatusChange, onDelete, onComment, userRole }) => {
+  const getPriorityStyle = (priority) => {
+    if (priority === 'HIGH') return { bg: '#fee2e2', color: '#dc2626', dot: '#dc2626' };
+    if (priority === 'MEDIUM') return { bg: '#fef9c3', color: '#ca8a04', dot: '#f59e0b' };
+    return { bg: '#dcfce7', color: '#16a34a', dot: '#10b981' };
+  };
 
-    {tasks.map(task => (
-      <div key={task.id} style={styles.card}>
-        {/* Priority Badge */}
-        <span style={{
-          ...styles.priority,
-          backgroundColor:
-            task.priority === 'HIGH' ? '#fee2e2' :
-            task.priority === 'MEDIUM' ? '#fef9c3' : '#dcfce7',
-          color:
-            task.priority === 'HIGH' ? '#dc2626' :
-            task.priority === 'MEDIUM' ? '#ca8a04' : '#16a34a',
-        }}>
+  const p = getPriorityStyle(task.priority);
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED';
+
+  return (
+    <div className="card-hover" style={styles.taskCard}>
+      {/* Priority & Due Date */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ ...styles.priorityBadge, background: p.bg, color: p.color }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.dot, display: 'inline-block', marginRight: '4px' }} />
           {task.priority}
         </span>
-
-        {/* Task Title */}
-        <h4 style={styles.cardTitle}>{task.title}</h4>
-
-        {/* Description */}
-        {task.description && (
-          <p style={styles.cardDesc}>{task.description}</p>
-        )}
-
-        {/* Due Date */}
         {task.dueDate && (
-          <p style={styles.dueDate}>
-            📅 {new Date(task.dueDate).toLocaleDateString()}
-          </p>
+          <span style={{ fontSize: '11px', color: isOverdue ? '#dc2626' : '#9ca3af', fontWeight: isOverdue ? '600' : '400' }}>
+            {isOverdue ? '⚠️ ' : '📅 '}
+            {new Date(task.dueDate).toLocaleDateString()}
+          </span>
         )}
+      </div>
 
-        {/* Assigned Users */}
-        {task.assignments?.length > 0 && (
-          <div style={styles.assignees}>
-            👤 {task.assignments.map(a => a.user.name).join(', ')}
-          </div>
-        )}
+      {/* Title */}
+      <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1035', margin: '0 0 6px' }}>
+        {task.title}
+      </h4>
 
-        {/* Comments Count */}
-        {task.comments?.length > 0 && (
-          <p style={styles.comments}>
-            💬 {task.comments.length} comment{task.comments.length > 1 ? 's' : ''}
-          </p>
-        )}
+      {/* Description */}
+      {task.description && (
+        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 10px', lineHeight: '1.5' }}>
+          {task.description.length > 80 ? task.description.substring(0, 80) + '...' : task.description}
+        </p>
+      )}
 
-        {/* Action Buttons */}
-        <div style={styles.cardActions}>
-          {/* Status Change Buttons */}
-          {status !== 'TODO' && (
-            <button
-              onClick={() => onStatusChange(task.id, 'TODO')}
-              style={{ ...styles.actionBtn, backgroundColor: '#f1f5f9' }}
-            >
-              ← To Do
-            </button>
-          )}
-          {status !== 'IN_PROGRESS' && (
-            <button
-              onClick={() => onStatusChange(task.id, 'IN_PROGRESS')}
-              style={{ ...styles.actionBtn, backgroundColor: '#dbeafe' }}
-            >
-              ⚡ In Progress
-            </button>
-          )}
-          {status !== 'COMPLETED' && (
-            <button
-              onClick={() => onStatusChange(task.id, 'COMPLETED')}
-              style={{ ...styles.actionBtn, backgroundColor: '#dcfce7' }}
-            >
-              ✅ Done
-            </button>
-          )}
-
-          {/* Comment Button */}
-          <button
-            onClick={() => onComment(task)}
-            style={{ ...styles.actionBtn, backgroundColor: '#f3e8ff' }}
-          >
-            💬 Comment
-          </button>
-
-          {/* Delete Button - Only for Admin/PM */}
-          {(userRole === 'ADMIN' || userRole === 'PROJECT_MANAGER') && (
-            <button
-              onClick={() => onDelete(task.id)}
-              style={{ ...styles.actionBtn, backgroundColor: '#fee2e2', color: '#dc2626' }}
-            >
-              🗑️ Delete
-            </button>
-          )}
+      {/* Assignees */}
+      {task.assignments?.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+          {task.assignments.slice(0, 3).map((a, i) => (
+            <div key={i} style={{
+              width: '24px', height: '24px', borderRadius: '50%',
+              background: '#7c3aed', color: 'white', fontSize: '10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: '600', border: '2px solid white',
+              marginLeft: i > 0 ? '-8px' : '0'
+            }}>
+              {a.user.name.charAt(0)}
+            </div>
+          ))}
+          <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '4px' }}>
+            {task.assignments.map(a => a.user.name).join(', ')}
+          </span>
         </div>
-      </div>
-    ))}
+      )}
 
-    {tasks.length === 0 && (
-      <div style={styles.emptyColumn}>
-        <p>No tasks here</p>
+      {/* Comments count */}
+      {task.comments?.length > 0 && (
+        <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>
+          💬 {task.comments.length} comment{task.comments.length > 1 ? 's' : ''}
+        </div>
+      )}
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: '#f3f4f6', margin: '10px 0' }} />
+
+      {/* Actions */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        {task.status !== 'TODO' && (
+          <button onClick={() => onStatusChange(task.id, 'TODO')} style={styles.actionBtn}>
+            📝 To Do
+          </button>
+        )}
+        {task.status !== 'IN_PROGRESS' && (
+          <button onClick={() => onStatusChange(task.id, 'IN_PROGRESS')} style={{ ...styles.actionBtn, background: '#dbeafe', color: '#1d4ed8' }}>
+            ⚡ Progress
+          </button>
+        )}
+        {task.status !== 'COMPLETED' && (
+          <button onClick={() => onStatusChange(task.id, 'COMPLETED')} style={{ ...styles.actionBtn, background: '#dcfce7', color: '#16a34a' }}>
+            ✅ Done
+          </button>
+        )}
+        <button onClick={() => onComment(task)} style={{ ...styles.actionBtn, background: '#f3e8ff', color: '#7c3aed' }}>
+          💬
+        </button>
+        {(userRole === 'ADMIN' || userRole === 'PROJECT_MANAGER') && (
+          <button onClick={() => onDelete(task.id)} style={{ ...styles.actionBtn, background: '#fee2e2', color: '#dc2626' }}>
+            🗑️
+          </button>
+        )}
       </div>
-    )}
+    </div>
+  );
+};
+
+// ─── Kanban Column ────────────────────────────────────────────
+const KanbanColumn = ({ title, status, tasks, color, bgColor, icon, onStatusChange, onDelete, onComment, userRole }) => (
+  <div style={{ ...styles.column, '--col-color': color }}>
+    <div style={{ ...styles.columnHeader, borderBottom: `2px solid ${color}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '18px' }}>{icon}</span>
+        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1a1035' }}>{title}</h3>
+      </div>
+      <span style={{ background: color, color: 'white', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: '600' }}>
+        {tasks.length}
+      </span>
+    </div>
+    <div style={{ padding: '12px', minHeight: '200px' }}>
+      {tasks.map(task => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          onStatusChange={onStatusChange}
+          onDelete={onDelete}
+          onComment={onComment}
+          userRole={userRole}
+        />
+      ))}
+      {tasks.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#d1d5db' }}>
+          <p style={{ fontSize: '32px' }}>📭</p>
+          <p style={{ fontSize: '13px' }}>No tasks here</p>
+        </div>
+      )}
+    </div>
   </div>
 );
 
-// ─── Main Tasks Page ─────────────────────────────────────────
+// ─── Modal ────────────────────────────────────────────────────
+const Modal = ({ title, onClose, children }) => (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modal}>
+      <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>{title}</h2>
+        <button onClick={onClose} style={styles.closeBtn}>✕</button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+// ─── Main Tasks Page ──────────────────────────────────────────
 const Tasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
@@ -126,19 +162,14 @@ const Tasks = () => {
   const [comment, setComment] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
-
-  // New Task Form State
   const [newTask, setNewTask] = useState({
     title: '', description: '', priority: 'MEDIUM',
     dueDate: '', assignedUserIds: []
   });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchTasks();
-    if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {
-      fetchUsers();
-    }
+    if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') fetchUsers();
   }, []);
 
   const fetchTasks = async () => {
@@ -164,10 +195,7 @@ const Tasks = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      await createTask({
-        ...newTask,
-        assignedUserIds: newTask.assignedUserIds.map(Number)
-      });
+      await createTask({ ...newTask, assignedUserIds: newTask.assignedUserIds.map(Number) });
       toast.success('Task created successfully!');
       setShowCreateModal(false);
       setNewTask({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedUserIds: [] });
@@ -188,7 +216,7 @@ const Tasks = () => {
   };
 
   const handleDelete = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!window.confirm('Delete this task?')) return;
     try {
       await deleteTask(taskId);
       toast.success('Task deleted!');
@@ -216,7 +244,6 @@ const Tasks = () => {
     }
   };
 
-  // Filter tasks
   const filteredTasks = tasks.filter(task => {
     const matchSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchPriority = filterPriority ? task.priority === filterPriority : true;
@@ -227,26 +254,26 @@ const Tasks = () => {
   const inProgressTasks = filteredTasks.filter(t => t.status === 'IN_PROGRESS');
   const completedTasks = filteredTasks.filter(t => t.status === 'COMPLETED');
 
-  if (loading) return <div style={styles.loading}>Loading tasks...</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <p>Loading tasks...</p>
+    </div>
+  );
 
   return (
     <div style={styles.container}>
       <Sidebar />
       <div style={styles.main}>
-
         {/* Header */}
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>Task Board 📋</h1>
-            <p style={styles.subtitle}>Manage and track all tasks</p>
+            <p style={styles.subtitle}>{tasks.length} total tasks</p>
           </div>
-          <div style={styles.headerRight}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <NotificationBell />
             {(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                style={styles.createBtn}
-              >
+              <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
                 + New Task
               </button>
             )}
@@ -260,186 +287,174 @@ const Tasks = () => {
             placeholder="🔍 Search tasks..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
+            className="input-modern"
+            style={{ width: '280px' }}
           />
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            style={styles.filterSelect}
+            className="input-modern"
+            style={{ width: '160px' }}
           >
             <option value="">All Priorities</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
+            <option value="HIGH">🔴 High</option>
+            <option value="MEDIUM">🟡 Medium</option>
+            <option value="LOW">🟢 Low</option>
           </select>
+          <div style={styles.taskStats}>
+            <span style={{ color: '#f59e0b' }}>📝 {todoTasks.length} To Do</span>
+            <span style={{ color: '#3b82f6' }}>⚡ {inProgressTasks.length} In Progress</span>
+            <span style={{ color: '#10b981' }}>✅ {completedTasks.length} Completed</span>
+          </div>
         </div>
 
         {/* Kanban Board */}
         <div style={styles.board}>
           <KanbanColumn
-            title="📝 To Do"
-            status="TODO"
-            tasks={todoTasks}
-            color="#f39c12"
+            title="To Do" status="TODO" tasks={todoTasks}
+            color="#f59e0b" bgColor="#fef9c3" icon="📝"
             onStatusChange={handleStatusChange}
-            onDelete={handleDelete}
-            onComment={handleComment}
+            onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
           />
           <KanbanColumn
-            title="⚡ In Progress"
-            status="IN_PROGRESS"
-            tasks={inProgressTasks}
-            color="#3498db"
+            title="In Progress" status="IN_PROGRESS" tasks={inProgressTasks}
+            color="#3b82f6" bgColor="#dbeafe" icon="⚡"
             onStatusChange={handleStatusChange}
-            onDelete={handleDelete}
-            onComment={handleComment}
+            onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
           />
           <KanbanColumn
-            title="✅ Completed"
-            status="COMPLETED"
-            tasks={completedTasks}
-            color="#2ecc71"
+            title="Completed" status="COMPLETED" tasks={completedTasks}
+            color="#10b981" bgColor="#dcfce7" icon="✅"
             onStatusChange={handleStatusChange}
-            onDelete={handleDelete}
-            onComment={handleComment}
+            onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
           />
         </div>
 
         {/* Create Task Modal */}
         {showCreateModal && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modal}>
-              <h2 style={styles.modalTitle}>Create New Task</h2>
-              <form onSubmit={handleCreateTask}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Title *</label>
-                  <input
-                    type="text"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    style={styles.input}
-                    placeholder="Task title"
-                    required
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Description</label>
-                  <textarea
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    style={{ ...styles.input, height: '80px', resize: 'vertical' }}
-                    placeholder="Task description"
-                  />
-                </div>
-                <div style={styles.formRow}>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label style={styles.label}>Priority</label>
-                    <select
-                      value={newTask.priority}
-                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                      style={styles.input}
-                    >
-                      <option value="LOW">Low</option>
-                      <option value="MEDIUM">Medium</option>
-                      <option value="HIGH">High</option>
-                    </select>
-                  </div>
-                  <div style={{ ...styles.formGroup, flex: 1 }}>
-                    <label style={styles.label}>Due Date</label>
-                    <input
-                      type="date"
-                      value={newTask.dueDate}
-                      onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Assign To</label>
+          <Modal title="✨ Create New Task" onClose={() => setShowCreateModal(false)}>
+            <form onSubmit={handleCreateTask}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Title *</label>
+                <input
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  className="input-modern"
+                  placeholder="Task title"
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Description</label>
+                <textarea
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  className="input-modern"
+                  style={{ height: '80px', resize: 'vertical' }}
+                  placeholder="Task description"
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>Priority</label>
                   <select
-                    multiple
-                    value={newTask.assignedUserIds}
-                    onChange={(e) => setNewTask({
-                      ...newTask,
-                      assignedUserIds: Array.from(e.target.selectedOptions, o => o.value)
-                    })}
-                    style={{ ...styles.input, height: '100px' }}
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                    className="input-modern"
                   >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                    ))}
+                    <option value="LOW">🟢 Low</option>
+                    <option value="MEDIUM">🟡 Medium</option>
+                    <option value="HIGH">🔴 High</option>
                   </select>
-                  <small style={{ color: '#666' }}>Hold Ctrl to select multiple users</small>
                 </div>
-                <div style={styles.modalActions}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    style={styles.cancelBtn}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" style={styles.submitBtn}>
-                    Create Task
-                  </button>
+                <div style={{ ...styles.formGroup, flex: 1 }}>
+                  <label style={styles.label}>Due Date</label>
+                  <input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                    className="input-modern"
+                  />
                 </div>
-              </form>
-            </div>
-          </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Assign To (Hold Ctrl for multiple)</label>
+                <select
+                  multiple
+                  value={newTask.assignedUserIds}
+                  onChange={(e) => setNewTask({
+                    ...newTask,
+                    assignedUserIds: Array.from(e.target.selectedOptions, o => o.value)
+                  })}
+                  className="input-modern"
+                  style={{ height: '100px' }}
+                >
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} — {u.role}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.modalActions}>
+                <button type="button" onClick={() => setShowCreateModal(false)} style={styles.cancelBtn}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Create Task
+                </button>
+              </div>
+            </form>
+          </Modal>
         )}
 
         {/* Comment Modal */}
         {showCommentModal && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modal}>
-              <h2 style={styles.modalTitle}>
-                Add Comment to "{selectedTask?.title}"
-              </h2>
-
-              {/* Existing Comments */}
-              {selectedTask?.comments?.length > 0 && (
-                <div style={styles.commentsList}>
-                  {selectedTask.comments.map(c => (
-                    <div key={c.id} style={styles.commentItem}>
-                      <strong style={{ fontSize: '13px' }}>{c.user.name}</strong>
-                      <p style={styles.commentText}>{c.content}</p>
-                      <span style={styles.commentTime}>
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </span>
+          <Modal title={`💬 Comments — ${selectedTask?.title}`} onClose={() => setShowCommentModal(false)}>
+            {selectedTask?.comments?.length > 0 && (
+              <div style={styles.commentsList}>
+                {selectedTask.comments.map(c => (
+                  <div key={c.id} style={styles.commentItem}>
+                    <div style={styles.commentAvatar}>
+                      {c.user.name.charAt(0)}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmitComment}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Your Comment</label>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    style={{ ...styles.input, height: '100px', resize: 'vertical' }}
-                    placeholder="Write your comment..."
-                    required
-                  />
-                </div>
-                <div style={styles.modalActions}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCommentModal(false)}
-                    style={styles.cancelBtn}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" style={styles.submitBtn}>
-                    Add Comment
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#1a1035', margin: '0 0 4px' }}>
+                        {c.user.name}
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#4b5563', margin: 0 }}>{c.content}</p>
+                      <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <form onSubmit={handleSubmitComment}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Add Comment</label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="input-modern"
+                  style={{ height: '100px', resize: 'vertical' }}
+                  placeholder="Write your comment..."
+                  required
+                />
+              </div>
+              <div style={styles.modalActions}>
+                <button type="button" onClick={() => setShowCommentModal(false)} style={styles.cancelBtn}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Add Comment
+                </button>
+              </div>
+            </form>
+          </Modal>
         )}
       </div>
     </div>
@@ -447,46 +462,31 @@ const Tasks = () => {
 };
 
 const styles = {
-  container: { display: 'flex', minHeight: '100vh', backgroundColor: '#f0f2f5' },
-  main: { marginLeft: '240px', flex: 1, padding: '32px' },
-  loading: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' },
+  container: { display: 'flex', minHeight: '100vh', background: '#f5f6fa' },
+  main: { marginLeft: '250px', flex: 1, padding: '32px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-  title: { margin: 0, fontSize: '28px', color: '#1a1a2e' },
-  subtitle: { margin: '4px 0 0 0', color: '#666' },
-  headerRight: { display: 'flex', alignItems: 'center', gap: '16px' },
-  createBtn: { padding: '10px 20px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' },
-  filters: { display: 'flex', gap: '12px', marginBottom: '24px' },
-  searchInput: { padding: '10px 16px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '300px' },
-  filterSelect: { padding: '10px 16px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' },
+  title: { fontSize: '26px', fontWeight: '700', color: '#1a1035', margin: '0 0 4px' },
+  subtitle: { color: '#6b7280', fontSize: '14px', margin: 0 },
+  filters: { display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' },
+  taskStats: { display: 'flex', gap: '16px', marginLeft: 'auto', fontSize: '13px', fontWeight: '600' },
   board: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', alignItems: 'start' },
-  column: { backgroundColor: '#f8fafc', borderRadius: '12px', padding: '16px', minHeight: '400px' },
-  columnHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '12px', backgroundColor: 'white', borderRadius: '8px' },
-  columnTitle: { margin: 0, fontSize: '16px', fontWeight: '600', color: '#1a1a2e' },
-  badge: { color: 'white', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: '600' },
-  card: { backgroundColor: 'white', borderRadius: '10px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-  priority: { display: 'inline-block', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginBottom: '8px' },
-  cardTitle: { margin: '0 0 8px 0', fontSize: '15px', color: '#1a1a2e' },
-  cardDesc: { margin: '0 0 8px 0', fontSize: '13px', color: '#666', lineHeight: '1.4' },
-  dueDate: { margin: '0 0 8px 0', fontSize: '12px', color: '#666' },
-  assignees: { fontSize: '12px', color: '#666', marginBottom: '8px' },
-  comments: { fontSize: '12px', color: '#666', margin: '0 0 8px 0' },
-  cardActions: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' },
-  actionBtn: { padding: '4px 10px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-  emptyColumn: { textAlign: 'center', color: '#aaa', padding: '40px 0' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { backgroundColor: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' },
-  modalTitle: { margin: '0 0 24px 0', color: '#1a1a2e' },
+  column: { background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+  columnHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'white' },
+  taskCard: { background: '#f9fafb', borderRadius: '12px', padding: '14px', marginBottom: '10px', cursor: 'pointer' },
+  priorityBadge: { display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600' },
+  actionBtn: { padding: '4px 10px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', background: '#f3f4f6', color: '#374151' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modal: { background: 'white', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+  modalTitle: { fontSize: '20px', fontWeight: '700', color: '#1a1035', margin: 0 },
+  closeBtn: { background: '#f3f4f6', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '14px' },
   formGroup: { marginBottom: '16px' },
-  formRow: { display: 'flex', gap: '16px' },
-  label: { display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#333' },
-  input: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
+  label: { display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' },
-  cancelBtn: { padding: '10px 20px', backgroundColor: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' },
-  submitBtn: { padding: '10px 20px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' },
-  commentsList: { marginBottom: '16px', maxHeight: '200px', overflowY: 'auto' },
-  commentItem: { padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', marginBottom: '8px' },
-  commentText: { margin: '4px 0', fontSize: '13px', color: '#444' },
-  commentTime: { fontSize: '11px', color: '#999' },
+  cancelBtn: { padding: '10px 20px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' },
+  commentsList: { marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' },
+  commentItem: { display: 'flex', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '10px', marginBottom: '8px' },
+  commentAvatar: { width: '32px', height: '32px', borderRadius: '50%', background: '#7c3aed', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '600', flexShrink: 0 },
 };
 
 export default Tasks;

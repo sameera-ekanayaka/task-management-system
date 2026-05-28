@@ -13,26 +13,19 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation
     if (newPassword.length < 8) {
       toast.error('Password must be at least 8 characters!');
       return;
     }
-
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match!');
       return;
     }
-
     setLoading(true);
     try {
       await resetPassword({ newPassword });
-      
-      // Update user in context
       const updatedUser = { ...user, mustResetPassword: false };
       login(updatedUser, token);
-      
       toast.success('Password reset successfully!');
       navigate('/dashboard');
     } catch (error) {
@@ -42,199 +35,157 @@ const ResetPassword = () => {
     }
   };
 
+  const getStrength = () => {
+    if (newPassword.length === 0) return null;
+    if (newPassword.length < 8) return { label: '⚠️ Too short', color: '#dc2626', width: '25%' };
+    if (newPassword.length < 12) return { label: '👍 Good', color: '#f59e0b', width: '60%' };
+    return { label: '💪 Strong', color: '#10b981', width: '100%' };
+  };
+
+  const strength = getStrength();
+
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
-        {/* Header */}
-        <div style={styles.header}>
-          <span style={styles.icon}>🔐</span>
-          <h1 style={styles.title}>Reset Your Password</h1>
-          <p style={styles.subtitle}>
-            Welcome <strong>{user?.name}</strong>! For security, 
-            please set a new password before continuing.
-          </p>
+      {/* Left Panel */}
+      <div style={styles.leftPanel}>
+        <div style={styles.logoSection}>
+          <div style={styles.logoIcon}>✓</div>
+          <h1 style={styles.brandName}>TaskManager</h1>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              style={styles.input}
-              placeholder="Enter new password (min 8 characters)"
-              required
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              style={styles.input}
-              placeholder="Confirm your new password"
-              required
-            />
-          </div>
-
-          {/* Password Match Indicator */}
-          {confirmPassword && (
-            <p style={{
-              ...styles.matchIndicator,
-              color: newPassword === confirmPassword ? '#16a34a' : '#dc2626'
-            }}>
-              {newPassword === confirmPassword 
-                ? '✅ Passwords match!' 
-                : '❌ Passwords do not match'}
-            </p>
-          )}
-
-          {/* Password Strength */}
-          {newPassword && (
-            <div style={styles.strengthContainer}>
-              <p style={styles.strengthLabel}>Password strength:</p>
-              <div style={styles.strengthBar}>
-                <div style={{
-                  ...styles.strengthFill,
-                  width: newPassword.length >= 12 ? '100%' 
-                       : newPassword.length >= 8 ? '60%' 
-                       : '30%',
-                  backgroundColor: newPassword.length >= 12 ? '#16a34a' 
-                                 : newPassword.length >= 8 ? '#f59e0b' 
-                                 : '#dc2626'
-                }} />
+        <div style={styles.infoCard}>
+          <h2 style={styles.infoTitle}>🔐 Security First</h2>
+          <p style={styles.infoText}>
+            For your security, please set a new password before accessing the system.
+          </p>
+          <div style={styles.tipsList}>
+            {[
+              'Use at least 8 characters',
+              'Mix letters and numbers',
+              'Add special characters',
+              'Avoid common passwords',
+            ].map((tip, i) => (
+              <div key={i} style={styles.tipItem}>
+                <span style={styles.tipIcon}>✅</span>
+                <span style={styles.tipText}>{tip}</span>
               </div>
-              <p style={styles.strengthText}>
-                {newPassword.length >= 12 ? '💪 Strong' 
-               : newPassword.length >= 8 ? '👍 Good' 
-               : '⚠️ Too short'}
-              </p>
-            </div>
-          )}
+            ))}
+          </div>
+        </div>
+      </div>
 
-          <button
-            type="submit"
-            style={loading ? styles.buttonDisabled : styles.button}
-            disabled={loading}
-          >
-            {loading ? 'Resetting...' : '🔐 Reset Password'}
-          </button>
-        </form>
+      {/* Right Panel */}
+      <div style={styles.rightPanel}>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={styles.iconCircle}>🔑</div>
+            <h2 style={styles.cardTitle}>Reset Password</h2>
+            <p style={styles.cardSubtitle}>
+              Welcome, <strong>{user?.name}</strong>! Set your new password.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="input-modern"
+                placeholder="Min. 8 characters"
+                required
+              />
+              {strength && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ background: '#f3f4f6', borderRadius: '4px', height: '6px', marginBottom: '4px' }}>
+                    <div style={{ width: strength.width, background: strength.color, borderRadius: '4px', height: '6px', transition: 'all 0.3s' }} />
+                  </div>
+                  <p style={{ fontSize: '12px', color: strength.color, margin: 0 }}>{strength.label}</p>
+                </div>
+              )}
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="input-modern"
+                placeholder="Repeat your password"
+                required
+              />
+              {confirmPassword && (
+                <p style={{ fontSize: '12px', margin: '6px 0 0', color: newPassword === confirmPassword ? '#10b981' : '#dc2626' }}>
+                  {newPassword === confirmPassword ? '✅ Passwords match!' : '❌ Passwords do not match'}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: '100%', padding: '12px', fontSize: '15px', marginTop: '8px' }}
+              disabled={loading}
+            >
+              {loading ? 'Resetting...' : '🔐 Reset Password'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: {
-    minHeight: '100vh',
+  container: { display: 'flex', minHeight: '100vh' },
+  leftPanel: {
+    flex: 1,
+    background: 'linear-gradient(135deg, #1a1035 0%, #2d1b69 100%)',
+    padding: '60px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  logoSection: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' },
+  logoIcon: {
+    width: '40px', height: '40px', background: '#7c3aed',
+    borderRadius: '10px', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', fontSize: '20px', color: 'white', fontWeight: 'bold',
+  },
+  brandName: { color: 'white', fontSize: '22px', fontWeight: '700', margin: 0 },
+  infoCard: {
+    background: 'rgba(255,255,255,0.06)',
+    borderRadius: '16px', padding: '28px',
+  },
+  infoTitle: { color: 'white', fontSize: '22px', fontWeight: '700', margin: '0 0 12px' },
+  infoText: { color: 'rgba(255,255,255,0.6)', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' },
+  tipsList: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  tipItem: { display: 'flex', alignItems: 'center', gap: '10px' },
+  tipIcon: { fontSize: '16px' },
+  tipText: { color: 'rgba(255,255,255,0.8)', fontSize: '14px' },
+  rightPanel: {
+    width: '480px',
+    background: '#f5f6fa',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f0f2f5',
+    padding: '40px',
   },
   card: {
-    backgroundColor: 'white',
-    padding: '40px',
-    borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: '440px',
+    background: 'white', borderRadius: '20px',
+    padding: '40px', width: '100%',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
   },
-  header: {
-    textAlign: 'center',
-    marginBottom: '32px',
+  cardHeader: { textAlign: 'center', marginBottom: '32px' },
+  iconCircle: {
+    width: '64px', height: '64px', background: '#f3e8ff',
+    borderRadius: '16px', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px',
   },
-  icon: {
-    fontSize: '48px',
-  },
-  title: {
-    margin: '12px 0 8px 0',
-    fontSize: '24px',
-    color: '#1a1a2e',
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: '14px',
-    lineHeight: '1.5',
-    margin: 0,
-  },
-  inputGroup: {
-    marginBottom: '20px',
-  },
-  label: {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#333',
-    fontWeight: '500',
-    fontSize: '14px',
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '14px',
-    boxSizing: 'border-box',
-    outline: 'none',
-  },
-  matchIndicator: {
-    fontSize: '13px',
-    margin: '-10px 0 16px 0',
-  },
-  strengthContainer: {
-    marginBottom: '20px',
-  },
-  strengthLabel: {
-    fontSize: '13px',
-    color: '#666',
-    margin: '0 0 6px 0',
-  },
-  strengthBar: {
-    height: '6px',
-    backgroundColor: '#f0f0f0',
-    borderRadius: '3px',
-    overflow: 'hidden',
-    marginBottom: '4px',
-  },
-  strengthFill: {
-    height: '100%',
-    borderRadius: '3px',
-    transition: 'all 0.3s ease',
-  },
-  strengthText: {
-    fontSize: '12px',
-    color: '#666',
-    margin: 0,
-  },
-  button: {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#1a73e8',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginTop: '8px',
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#93b8f5',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    cursor: 'not-allowed',
-    marginTop: '8px',
-    fontWeight: '600',
-  },
+  cardTitle: { fontSize: '26px', fontWeight: '700', color: '#1a1035', margin: '0 0 8px' },
+  cardSubtitle: { color: '#6b7280', fontSize: '15px', margin: 0 },
+  formGroup: { marginBottom: '20px' },
+  label: { display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#374151' },
 };
 
 export default ResetPassword;
