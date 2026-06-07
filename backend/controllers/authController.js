@@ -82,12 +82,35 @@ const resetPassword = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ 
-        error: 'Bad Request', 
-        message: 'Password must be at least 8 characters' 
-      });
-    }
+    if (!newPassword) {
+  return res.status(400).json({
+    error: 'Bad Request',
+    message: 'Password is required'
+  });
+}
+
+// Complexity rules
+const passwordRules = {
+  minLength: newPassword.length >= 8,
+  hasUppercase: /[A-Z]/.test(newPassword),
+  hasLowercase: /[a-z]/.test(newPassword),
+  hasNumber: /[0-9]/.test(newPassword),
+  hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+};
+
+const failedRules = [];
+if (!passwordRules.minLength) failedRules.push('at least 8 characters');
+if (!passwordRules.hasUppercase) failedRules.push('one uppercase letter');
+if (!passwordRules.hasLowercase) failedRules.push('one lowercase letter');
+if (!passwordRules.hasNumber) failedRules.push('one number');
+if (!passwordRules.hasSpecial) failedRules.push('one special character');
+
+if (failedRules.length > 0) {
+  return res.status(400).json({
+    error: 'Bad Request',
+    message: `Password must contain: ${failedRules.join(', ')}`
+  });
+}
 
     const hashed = await bcrypt.hash(newPassword, 10);
 

@@ -12,16 +12,50 @@ const NotificationBell = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchNotifications();
-    const socket = io(process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000');
-    socket.emit('register', user?.id);
-    socket.on('notification', (data) => {
-      setUnreadCount(prev => prev + 1);
-      setNotifications(prev => [
-        { id: Date.now(), message: data.message, isRead: false, createdAt: new Date() },
-        ...prev
-      ]);
-    });
-    return () => socket.disconnect();
+    let socket;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const connectSocket = () => {
+      socket = io(
+        process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000',
+        {
+          reconnection: true,
+          reconnectionAttempts: maxReconnectAttempts,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          timeout: 10000,
+        }
+      );
+      socket.emit('register', user?.id);
+      socket.on('notification', (data) => {
+        setUnreadCount(prev => prev + 1);
+        setNotifications(prev => [
+          { id: Date.now(), message: data.message, isRead: false, createdAt: new Date() },
+          ...prev
+        ]);
+      });
+      socket.on('connect', () => {
+        console.log('Socket connected');
+        reconnectAttempts = 0;
+        // Re-register after reconnection
+        socket.emit('register', user?.id);
+        // Fetch missed notifications
+        fetchNotifications();
+      });
+      socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
+      });
+      socket.on('reconnect', (attemptNumber) => {
+        console.log('Socket reconnected after', attemptNumber, 'attempts');
+      });
+      socket.on('reconnect_failed', () => {
+        console.log('Socket reconnection failed after', maxReconnectAttempts, 'attempts');
+      });
+    };
+    connectSocket();
+    return () => {
+      if (socket) socket.disconnect();
+    };
   }, [token]);
 
   const fetchNotifications = async () => {

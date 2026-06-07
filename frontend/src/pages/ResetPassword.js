@@ -13,8 +13,9 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters!');
+    const allMet = requirements.every(r => r.met);
+    if (!allMet) {
+      toast.error('Password does not meet all requirements!');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -37,10 +38,27 @@ const ResetPassword = () => {
 
   const getStrength = () => {
     if (newPassword.length === 0) return null;
-    if (newPassword.length < 8) return { label: '⚠️ Too short', color: '#dc2626', width: '25%' };
-    if (newPassword.length < 12) return { label: '👍 Good', color: '#f59e0b', width: '60%' };
-    return { label: '💪 Strong', color: '#10b981', width: '100%' };
+    const checks = {
+      length: newPassword.length >= 8,
+      uppercase: /[A-Z]/.test(newPassword),
+      lowercase: /[a-z]/.test(newPassword),
+      number: /[0-9]/.test(newPassword),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+    };
+    const score = Object.values(checks).filter(Boolean).length;
+    if (score <= 2) return { label: '⚠️ Weak', color: '#dc2626', width: '20%' };
+    if (score === 3) return { label: '👍 Fair', color: '#f59e0b', width: '50%' };
+    if (score === 4) return { label: '💪 Good', color: '#3b82f6', width: '75%' };
+    return { label: '🔒 Strong', color: '#10b981', width: '100%' };
   };
+
+  const requirements = [
+    { label: 'At least 8 characters', met: newPassword.length >= 8 },
+    { label: 'One uppercase letter', met: /[A-Z]/.test(newPassword) },
+    { label: 'One lowercase letter', met: /[a-z]/.test(newPassword) },
+    { label: 'One number', met: /[0-9]/.test(newPassword) },
+    { label: 'One special character (!@#$...)', met: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword) }
+  ];
 
   const strength = getStrength();
 
@@ -95,12 +113,34 @@ const ResetPassword = () => {
                 placeholder="Min. 8 characters"
                 required
               />
-              {strength && (
+              {/* Strength bar */}
+              {newPassword && (
                 <div style={{ marginTop: '8px' }}>
-                  <div style={{ background: '#f3f4f6', borderRadius: '4px', height: '6px', marginBottom: '4px' }}>
-                    <div style={{ width: strength.width, background: strength.color, borderRadius: '4px', height: '6px', transition: 'all 0.3s' }} />
+                  <div style={{ background: '#f3f4f6', borderRadius: '4px', height: '6px', marginBottom: '6px' }}>
+                    <div style={{
+                      width: strength?.width,
+                      background: strength?.color,
+                      borderRadius: '4px',
+                      height: '6px',
+                      transition: 'all 0.3s'
+                    }} />
                   </div>
-                  <p style={{ fontSize: '12px', color: strength.color, margin: 0 }}>{strength.label}</p>
+                  <p style={{ fontSize: '12px', color: strength?.color, margin: '0 0 10px' }}>
+                    {strength?.label}
+                  </p>
+                  {/* Requirements checklist */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {requirements.map((req, i) => (
+                      <p key={i} style={{
+                        fontSize: '12px',
+                        margin: 0,
+                        color: req.met ? '#10b981' : '#9ca3af',
+                        transition: 'color 0.2s'
+                      }}>
+                        {req.met ? '✅' : '○'} {req.label}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -116,7 +156,11 @@ const ResetPassword = () => {
                 required
               />
               {confirmPassword && (
-                <p style={{ fontSize: '12px', margin: '6px 0 0', color: newPassword === confirmPassword ? '#10b981' : '#dc2626' }}>
+                <p style={{
+                  fontSize: '12px',
+                  margin: '6px 0 0',
+                  color: newPassword === confirmPassword ? '#10b981' : '#dc2626'
+                }}>
                   {newPassword === confirmPassword ? '✅ Passwords match!' : '❌ Passwords do not match'}
                 </p>
               )}
