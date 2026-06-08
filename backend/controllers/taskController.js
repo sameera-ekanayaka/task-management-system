@@ -331,7 +331,81 @@ const addComment = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error', message: 'Something went wrong' });
   }
 };
+// @route   POST /api/tasks/:id/attachments
+// @access  All logged in users
+const addAttachment = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
 
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'No file uploaded'
+      });
+    }
+
+    const task = await prisma.task.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Task not found'
+      });
+    }
+
+    const attachment = await prisma.attachment.create({
+      data: {
+        filename: req.file.originalname,
+        url: `/uploads/${req.file.filename}`,
+        taskId: parseInt(id),
+        userId
+      },
+      include: {
+        user: { select: { id: true, name: true } }
+      }
+    });
+
+    res.status(201).json({
+      message: 'File uploaded successfully',
+      attachment
+    });
+
+  } catch (error) {
+    console.error('Upload attachment error:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Something went wrong'
+    });
+  }
+};
+
+// @route   GET /api/tasks/:id/attachments
+// @access  All logged in users
+const getAttachments = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const attachments = await prisma.attachment.findMany({
+      where: { taskId: parseInt(id) },
+      include: {
+        user: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.status(200).json({ attachments });
+
+  } catch (error) {
+    console.error('Get attachments error:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Something went wrong'
+    });
+  }
+};
 module.exports = {
   createTask,
   getAllTasks,
@@ -339,5 +413,7 @@ module.exports = {
   updateTask,
   updateTaskStatus,
   deleteTask,
-  addComment
+  addComment,
+  addAttachment,
+  getAttachments
 };

@@ -22,6 +22,7 @@ model User {
   comments          Comment[]
   notifications     Notification[]
   createdTasks      Task[]    @relation("CreatedBy")
+  attachments Attachment[]
 }
 
 model Task {
@@ -39,6 +40,7 @@ model Task {
 
   assignments TaskAssignment[]
   comments    Comment[]
+  attachments Attachment[]
 }
 
 model TaskAssignment {
@@ -63,6 +65,17 @@ model Comment {
   userId    Int
 }
 
+model Attachment {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  url       String
+  taskId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 model Notification {
   id        Int      @id @default(autoincrement())
   message   String

@@ -24,6 +24,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -34,13 +37,11 @@ const connectedUsers = {};
 io.on('connection', (socket) => {
   console.log('New connection:', socket.id);
 
-  // Register user when they login
   socket.on('register', (userId) => {
     connectedUsers[userId] = socket.id;
     console.log(`User ${userId} registered with socket ${socket.id}`);
   });
 
-  // Remove user when they disconnect
   socket.on('disconnect', () => {
     for (const [userId, socketId] of Object.entries(connectedUsers)) {
       if (socketId === socket.id) {

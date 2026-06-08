@@ -1,5 +1,3 @@
-const express = require('express');
-const router = express.Router();
 const {
   createTask,
   getAllTasks,
@@ -7,9 +5,11 @@ const {
   updateTask,
   updateTaskStatus,
   deleteTask,
-  addComment
+  addComment,
+  addAttachment,
+  getAttachments
 } = require('../controllers/taskController');
-const { protect, authorizeRoles } = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
 /**
  * @swagger
@@ -228,5 +228,7 @@ router.delete('/:id', protect, authorizeRoles('ADMIN', 'PROJECT_MANAGER'), delet
  *         description: Comment added
  */
 router.post('/:id/comments', protect, addComment);
+router.post('/:id/attachments', upload.single('file'), addAttachment);
+router.get('/:id/attachments', getAttachments);
 
 module.exports = router;

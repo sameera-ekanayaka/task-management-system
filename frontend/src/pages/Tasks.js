@@ -18,7 +18,6 @@ const TaskCard = ({ task, onStatusChange, onDelete, onComment, userRole }) => {
 
   return (
     <div className="card-hover" style={styles.taskCard}>
-      {/* Priority & Due Date */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ ...styles.priorityBadge, background: p.bg, color: p.color }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.dot, display: 'inline-block', marginRight: '4px' }} />
@@ -32,19 +31,16 @@ const TaskCard = ({ task, onStatusChange, onDelete, onComment, userRole }) => {
         )}
       </div>
 
-      {/* Title */}
       <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1035', margin: '0 0 6px' }}>
         {task.title}
       </h4>
 
-      {/* Description */}
       {task.description && (
         <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 10px', lineHeight: '1.5' }}>
           {task.description.length > 80 ? task.description.substring(0, 80) + '...' : task.description}
         </p>
       )}
 
-      {/* Assignees */}
       {task.assignments?.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
           {task.assignments.slice(0, 3).map((a, i) => (
@@ -64,17 +60,22 @@ const TaskCard = ({ task, onStatusChange, onDelete, onComment, userRole }) => {
         </div>
       )}
 
-      {/* Comments count */}
-      {task.comments?.length > 0 && (
-        <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>
-          💬 {task.comments.length} comment{task.comments.length > 1 ? 's' : ''}
-        </div>
-      )}
+      {/* Comments & Attachments count */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
+        {task.comments?.length > 0 && (
+          <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+            💬 {task.comments.length} comment{task.comments.length > 1 ? 's' : ''}
+          </span>
+        )}
+        {task.attachments?.length > 0 && (
+          <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+            📎 {task.attachments.length} attachment{task.attachments.length > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
 
-      {/* Divider */}
       <div style={{ height: '1px', background: '#f3f4f6', margin: '10px 0' }} />
 
-      {/* Actions */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
         {task.status !== 'TODO' && (
           <button onClick={() => onStatusChange(task.id, 'TODO')} style={styles.actionBtn}>
@@ -105,8 +106,8 @@ const TaskCard = ({ task, onStatusChange, onDelete, onComment, userRole }) => {
 };
 
 // ─── Kanban Column ────────────────────────────────────────────
-const KanbanColumn = ({ title, status, tasks, color, bgColor, icon, onStatusChange, onDelete, onComment, userRole }) => (
-  <div style={{ ...styles.column, '--col-color': color }}>
+const KanbanColumn = ({ title, status, tasks, color, icon, onStatusChange, onDelete, onComment, userRole }) => (
+  <div style={styles.column}>
     <div style={{ ...styles.columnHeader, borderBottom: `2px solid ${color}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '18px' }}>{icon}</span>
@@ -160,6 +161,8 @@ const Tasks = () => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [comment, setComment] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
   const [newTask, setNewTask] = useState({
@@ -167,6 +170,7 @@ const Tasks = () => {
     dueDate: '', assignedUserIds: []
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchTasks();
     if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') fetchUsers();
@@ -228,6 +232,7 @@ const Tasks = () => {
 
   const handleComment = (task) => {
     setSelectedTask(task);
+    setSelectedFile(null);
     setShowCommentModal(true);
   };
 
@@ -236,11 +241,38 @@ const Tasks = () => {
     try {
       await addComment(selectedTask.id, { content: comment });
       toast.success('Comment added!');
-      setShowCommentModal(false);
       setComment('');
       fetchTasks();
+      // Refresh selected task
+      const response = await getTasks();
+      const updated = response.data.tasks.find(t => t.id === selectedTask.id);
+      if (updated) setSelectedTask(updated);
     } catch (error) {
       toast.error('Failed to add comment');
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      const token = localStorage.getItem('token');
+      const baseURL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+      const response = await fetch(`${baseURL}/api/tasks/${selectedTask.id}/attachments`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+        body: formData
+      });
+      if (!response.ok) throw new Error('Upload failed');
+      toast.success('File uploaded successfully!');
+      setSelectedFile(null);
+      fetchTasks();
+    } catch (error) {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -312,21 +344,21 @@ const Tasks = () => {
         <div style={styles.board}>
           <KanbanColumn
             title="To Do" status="TODO" tasks={todoTasks}
-            color="#f59e0b" bgColor="#fef9c3" icon="📝"
+            color="#f59e0b" icon="📝"
             onStatusChange={handleStatusChange}
             onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
           />
           <KanbanColumn
             title="In Progress" status="IN_PROGRESS" tasks={inProgressTasks}
-            color="#3b82f6" bgColor="#dbeafe" icon="⚡"
+            color="#3b82f6" icon="⚡"
             onStatusChange={handleStatusChange}
             onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
           />
           <KanbanColumn
             title="Completed" status="COMPLETED" tasks={completedTasks}
-            color="#10b981" bgColor="#dcfce7" icon="✅"
+            color="#10b981" icon="✅"
             onStatusChange={handleStatusChange}
             onDelete={handleDelete} onComment={handleComment}
             userRole={user?.role}
@@ -402,37 +434,62 @@ const Tasks = () => {
                 <button type="button" onClick={() => setShowCreateModal(false)} style={styles.cancelBtn}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Create Task
-                </button>
+                <button type="submit" className="btn-primary">Create Task</button>
               </div>
             </form>
           </Modal>
         )}
 
-        {/* Comment Modal */}
+        {/* Comment & Attachment Modal */}
         {showCommentModal && (
-          <Modal title={`💬 Comments — ${selectedTask?.title}`} onClose={() => setShowCommentModal(false)}>
+          <Modal title={`💬 ${selectedTask?.title}`} onClose={() => { setShowCommentModal(false); setSelectedFile(null); }}>
+
+            {/* Existing Comments */}
             {selectedTask?.comments?.length > 0 && (
               <div style={styles.commentsList}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Comments</p>
                 {selectedTask.comments.map(c => (
                   <div key={c.id} style={styles.commentItem}>
-                    <div style={styles.commentAvatar}>
-                      {c.user.name.charAt(0)}
-                    </div>
+                    <div style={styles.commentAvatar}>{c.user.name.charAt(0)}</div>
                     <div>
-                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#1a1035', margin: '0 0 4px' }}>
-                        {c.user.name}
-                      </p>
+                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#1a1035', margin: '0 0 4px' }}>{c.user.name}</p>
                       <p style={{ fontSize: '13px', color: '#4b5563', margin: 0 }}>{c.content}</p>
-                      <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </p>
+                      <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>{new Date(c.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Existing Attachments */}
+            {selectedTask?.attachments?.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Attachments</p>
+                {selectedTask.attachments.map(a => {
+                  const baseURL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+                  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(a.filename);
+                  return (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#f9fafb', borderRadius: '8px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '18px' }}>{isImage ? '🖼️' : '📄'}</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: '13px', color: '#1a1035', margin: 0, fontWeight: '500' }}>{a.filename}</p>
+                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: 0 }}>by {a.user?.name}</p>
+                      </div>
+                      <a
+                        href={`${baseURL}${a.url}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: '12px', color: '#7c3aed', textDecoration: 'none', fontWeight: '600' }}
+                      >
+                        {isImage ? 'View' : 'Download'} →
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add Comment */}
             <form onSubmit={handleSubmitComment}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Add Comment</label>
@@ -440,20 +497,49 @@ const Tasks = () => {
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   className="input-modern"
-                  style={{ height: '100px', resize: 'vertical' }}
+                  style={{ height: '80px', resize: 'vertical' }}
                   placeholder="Write your comment..."
                   required
                 />
               </div>
               <div style={styles.modalActions}>
-                <button type="button" onClick={() => setShowCommentModal(false)} style={styles.cancelBtn}>
+                <button type="button" onClick={() => { setShowCommentModal(false); setSelectedFile(null); }} style={styles.cancelBtn}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Add Comment
-                </button>
+                <button type="submit" className="btn-primary">Add Comment</button>
               </div>
             </form>
+
+            {/* File Upload Section */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+              <label style={styles.label}>📎 Upload Attachment</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <input
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  style={{ fontSize: '13px', color: '#6b7280', flex: 1 }}
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+                {selectedFile && (
+                  <button
+                    type="button"
+                    onClick={handleFileUpload}
+                    disabled={uploadingFile}
+                    style={{ ...styles.cancelBtn, background: '#f3e8ff', color: '#7c3aed', whiteSpace: 'nowrap' }}
+                  >
+                    {uploadingFile ? 'Uploading...' : '⬆️ Upload'}
+                  </button>
+                )}
+              </div>
+              {selectedFile && (
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '6px 0 0' }}>
+                Allowed: Images, PDF, Word docs, Text files (max 5MB)
+              </p>
+            </div>
           </Modal>
         )}
       </div>
@@ -484,7 +570,7 @@ const styles = {
   label: { display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' },
   cancelBtn: { padding: '10px 20px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' },
-  commentsList: { marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' },
+  commentsList: { marginBottom: '20px', maxHeight: '160px', overflowY: 'auto' },
   commentItem: { display: 'flex', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '10px', marginBottom: '8px' },
   commentAvatar: { width: '32px', height: '32px', borderRadius: '50%', background: '#7c3aed', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '600', flexShrink: 0 },
 };
