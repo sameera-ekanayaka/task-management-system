@@ -162,6 +162,17 @@ Notification → Real-time notifications for Users
 
 ---
 
+## 🗄️ ER Diagram
+
+![ER Diagram](docs/ER_Diagram.png)
+
+### Relationships
+- **User** creates many **Tasks**
+- **Task** has many **TaskAssignments** (many-to-many with Users)
+- **User** writes many **Comments** on Tasks
+- **User** receives many **Notifications**
+- **Task** has many **Attachments** uploaded by Users
+
 ## 📁 Project Structure
 
 task-management-system/
