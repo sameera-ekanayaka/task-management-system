@@ -173,6 +173,21 @@ Notification → Real-time notifications for Users
 - **User** receives many **Notifications**
 - **Task** has many **Attachments** uploaded by Users
 
+---
+
+## 🚀 Deployment Diagram
+
+![Deployment Diagram](docs/Deployment_Diagram.png)
+
+### Deployment Architecture
+- **Frontend** → Vercel (auto-deploys on push to main)
+- **Backend** → Runs locally, exposed via ngrok tunnel
+- **Database** → Clever Cloud MySQL (permanent cloud)
+- **CI/CD** → GitHub Actions (runs tests on every push)
+- **Containers** → Docker + docker-compose for local development
+
+---
+
 ## 📁 Project Structure
 
 task-management-system/
