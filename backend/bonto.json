@@ -1,0 +1,6 @@
+{
+  "root": "backend",
+  "start": "node server.js",
+  "install": "npm install && npx prisma generate",
+  "node": "22"
+}
