@@ -6,22 +6,26 @@ require('dotenv').config();
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { checkDeadlines } = require('./services/deadlineService');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
+    origin: ['http://localhost:3000', 'https://task-management-system-nsuw.vercel.app'],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
 // Middleware
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:3000', 'https://task-management-system-nsuw.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning']
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json());
 
 // Serve uploaded files
@@ -36,12 +40,10 @@ const connectedUsers = {};
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('New connection:', socket.id);
-
   socket.on('register', (userId) => {
     connectedUsers[userId] = socket.id;
     console.log(`User ${userId} registered with socket ${socket.id}`);
   });
-
   socket.on('disconnect', () => {
     for (const [userId, socketId] of Object.entries(connectedUsers)) {
       if (socketId === socket.id) {

@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Generate JWT Token
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: user.id, name: user.name, email: user.email, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
@@ -18,46 +18,50 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if email and password are provided
     if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Bad Request', 
-        message: 'Email and password are required' 
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Email and password are required'
       });
     }
 
-    // Find user by email
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'Invalid email or password' 
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid email or password'
       });
     }
 
-    // Check if user is active
     if (!user.isActive) {
-      return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: 'Your account has been deactivated' 
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Your account has been deactivated'
       });
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'Invalid email or password' 
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid email or password'
       });
     }
 
-    // Generate token
     const token = generateToken(user);
 
+    // Set JWT as HTTP-only cookie
+    // Replace with this:
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
     res.status(200).json({
       message: 'Login successful',
-      token,
+      token, // Keep for backward compatibility
       user: {
         id: user.id,
         name: user.name,
@@ -69,9 +73,9 @@ const login = async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error', 
-      message: 'Something went wrong' 
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Something went wrong'
     });
   }
 };
@@ -83,34 +87,33 @@ const resetPassword = async (req, res) => {
 
   try {
     if (!newPassword) {
-  return res.status(400).json({
-    error: 'Bad Request',
-    message: 'Password is required'
-  });
-}
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Password is required'
+      });
+    }
 
-// Complexity rules
-const passwordRules = {
-  minLength: newPassword.length >= 8,
-  hasUppercase: /[A-Z]/.test(newPassword),
-  hasLowercase: /[a-z]/.test(newPassword),
-  hasNumber: /[0-9]/.test(newPassword),
-  hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
-};
+    const passwordRules = {
+      minLength: newPassword.length >= 8,
+      hasUppercase: /[A-Z]/.test(newPassword),
+      hasLowercase: /[a-z]/.test(newPassword),
+      hasNumber: /[0-9]/.test(newPassword),
+      hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+    };
 
-const failedRules = [];
-if (!passwordRules.minLength) failedRules.push('at least 8 characters');
-if (!passwordRules.hasUppercase) failedRules.push('one uppercase letter');
-if (!passwordRules.hasLowercase) failedRules.push('one lowercase letter');
-if (!passwordRules.hasNumber) failedRules.push('one number');
-if (!passwordRules.hasSpecial) failedRules.push('one special character');
+    const failedRules = [];
+    if (!passwordRules.minLength) failedRules.push('at least 8 characters');
+    if (!passwordRules.hasUppercase) failedRules.push('one uppercase letter');
+    if (!passwordRules.hasLowercase) failedRules.push('one lowercase letter');
+    if (!passwordRules.hasNumber) failedRules.push('one number');
+    if (!passwordRules.hasSpecial) failedRules.push('one special character');
 
-if (failedRules.length > 0) {
-  return res.status(400).json({
-    error: 'Bad Request',
-    message: `Password must contain: ${failedRules.join(', ')}`
-  });
-}
+    if (failedRules.length > 0) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Password must contain: ${failedRules.join(', ')}`
+      });
+    }
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
@@ -123,11 +126,22 @@ if (failedRules.length > 0) {
 
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error', 
-      message: 'Something went wrong' 
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Something went wrong'
     });
   }
 };
 
-module.exports = { login, resetPassword };
+// @route   POST /api/auth/logout
+const logout = async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax'
+  });
+  res.status(200).json({ message: 'Logged out successfully' });
+};
+
+module.exports = { login, resetPassword, logout };

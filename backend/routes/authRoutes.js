@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { login, resetPassword } = require('../controllers/authController');
+const { login, resetPassword, logout } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 /**
@@ -60,5 +60,19 @@ router.post('/login', login);
  *         description: Unauthorized
  */
 router.post('/reset-password', protect, resetPassword);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Logout and clear cookie
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ */
+router.post('/logout', protect, logout);
 
 module.exports = router;

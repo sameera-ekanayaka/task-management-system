@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user was already logged in
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     if (savedToken && savedUser) {
@@ -21,11 +20,30 @@ export const AuthProvider = ({ children }) => {
   const login = (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
+    // Keep localStorage for UI state
     localStorage.setItem('token', userToken);
     localStorage.setItem('user', JSON.stringify(userData));
+    // HTTP-only cookie is set automatically by the backend
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Clear server-side HTTP-only cookie
+      await fetch(
+        `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/api/auth/logout`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    // Clear local state
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
